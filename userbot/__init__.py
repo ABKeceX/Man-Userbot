@@ -383,3 +383,201 @@ def paginate_help(page_number, loaded_modules, prefix):
         custom.Button.inline("{} {} 乂".format("乂", x), data="ub_modul_{}".format(x))
         for x in helpable_modules
     ]
+    pairs = list(zip(modules[::number_of_cols],
+                     modules[1::number_of_cols],
+                     modules[2::number_of_cols]))
+    if len(modules) % number_of_cols == 1:
+        pairs.append((modules[-1],))
+    max_num_pages = ceil(len(pairs) / number_of_rows)
+    modulo_page = page_number % max_num_pages
+    if len(pairs) > number_of_rows:
+        pairs = pairs[
+            modulo_page * number_of_rows: number_of_rows * (modulo_page + 1)
+        ] + [
+            (
+                custom.Button.inline(
+                    "««", data="{}_prev({})".format(prefix, modulo_page)
+                ),
+                custom.Button.inline(
+                    'Tutup', b'close'
+                ),
+                custom.Button.inline(
+                    "»»", data="{}_next({})".format(prefix, modulo_page)
+                )
+            )
+        ]
+    return pairs
+
+
+with bot:
+    try:
+        tgbot = TelegramClient(
+            "TG_BOT_TOKEN",
+            api_id=API_KEY,
+            api_hash=API_HASH).start(
+            bot_token=BOT_TOKEN)
+
+        dugmeler = CMD_HELP
+        me = bot.get_me()
+        uid = me.id
+        logo = ALIVE_LOGO
+
+        @tgbot.on(events.NewMessage(pattern="/start"))
+        async def handler(event):
+            await event.message.get_sender()
+            text = (
+                f"**Hey**, __Saya Menggunakan__ 乂 **COKK-Userbot** 乂\n\n"
+                f"       __Terima Kasih Sudah Menggunakan Ku Cok😎__\n\n"
+                f"✣ **Userbot Version :** `{BOT_VER}@{UPSTREAM_REPO_BRANCH}`\n"
+                f"✣ **Support :** [For Support](t.me/yangmutebabi)\n"
+                f"✣ **Owner Repo :** [『AB』](t.me/yangmutebabi)\n"
+            await tgbot.send_file(event.chat_id, logo, caption=text,
+                                  buttons=[
+                                      [
+                                          custom.Button.url(
+                                              text="乂 Help Support 乂",
+                                              url="https://t.me/yangmutebabi"
+                                          )
+                                      ]
+                                  ]
+                                  )
+
+        @tgbot.on(events.InlineQuery)  # pylint:disable=E0602
+        async def inline_handler(event):
+            builder = event.builder
+            result = None
+            query = event.text
+            if event.query.user_id == uid and query.startswith("@UserButt"):
+                buttons = paginate_help(0, dugmeler, "helpme")
+                result = builder.article(
+                    "Harap Gunakan .help Untuk Perintah",
+                    text="{}\n\n**𖣘 Jumlah Module Yang Tersedia :** `{}` **Module**\n               \n**ꗄ Daftar Modul Cokk-Userbot :** \n".format(
+                        "**𖣘 COKK-UserBot Main Menu 𖣘**",
+                        len(dugmeler),
+                    ),
+                    buttons=buttons,
+                    link_preview=False,
+                )
+            elif query.startswith("repo"):
+                result = builder.article(
+                    title="Repository",
+                    description="Repository Cok - Userbot",
+                    url="https://t.me/yangmutebabi",
+                    text="**COKK - UserBot**\n➖➖➖➖➖➖➖➖➖➖\n𖣘 **Owner Repo COK :** [『AB』](https://t.me/yangmutebabi)\n𖣘 **For Support :** [𝑲𝑳𝑰𝑲 𝑫𝑰𝑺𝑰𝑵𝑰](t.me/yangmutebabi)\n➖➖➖➖➖➖➖➖➖➖",
+                    buttons=[
+                        [
+                            custom.Button.url(
+                                "乂 For Support 乂",
+                                "https://t.me/yangmutebabi"),
+                            custom.Button.url(
+                                "Repo",
+                                "https://github.com/ABKeceX/Cok-Userbot/tree/Cok-Userbot")],
+                    ],
+                    link_preview=False)
+            else:
+                result = builder.article(
+                    title="𖣘 Cokk-Userbot 𖣘",
+                    description="Cokk - UserBot | Telethon",
+                    url="https://t.me/yangmutebabi",
+                    text="**COKK - UserBot**\n➖➖➖➖➖➖➖➖➖➖\n𖣘 **Owner Repo COK :** [『AB』](https://t.me/yangmutebabi)\n𖣘 **For Support :** [𝑲𝑳𝑰𝑲 𝑫𝑰𝑺𝑰𝑵𝑰](t.me/yangmutebabi)\n➖➖➖➖➖➖➖➖➖➖",
+                    buttons=[
+                        [
+                            custom.Button.url(
+                                "乂 For Support 乂",
+                                "https://t.me/yangmutebabi"),
+                            custom.Button.url(
+                                "Repo",
+                                "https://github.com/ABKeceX/Cok-Userbot/tree/Cok-Userbot")],
+                    ],
+                    link_preview=False,
+                )
+            await event.answer([result] if result else None)
+
+        @tgbot.on(
+            events.callbackquery.CallbackQuery(  # pylint:disable=E0602
+                data=re.compile(rb"helpme_next\((.+?)\)")
+            )
+        )
+        async def on_plug_in_callback_query_handler(event):
+            if event.query.user_id == uid:  # pylint:disable=E0602
+                current_page_number = int(
+                    event.data_match.group(1).decode("UTF-8"))
+                buttons = paginate_help(
+                    current_page_number + 1, dugmeler, "helpme")
+                # https://t.me/TelethonChat/115200
+                await event.edit(buttons=buttons)
+            else:
+                reply_pop_up_alert = f"Kamu Tidak diizinkan Cok, ini Userbot Milik {ALIVE_NAME}"
+                await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
+
+        @tgbot.on(events.callbackquery.CallbackQuery(data=re.compile(b"close")))
+        async def on_plug_in_callback_query_handler(event):
+            if event.query.user_id == uid:
+                await event.edit("**Help Mode Button Ditutup Cok!**")
+            else:
+                reply_pop_up_alert = f"Kamu Tidak diizinkan Cok, ini Userbot Milik {ALIVE_NAME}"
+                await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
+
+        @tgbot.on(
+            events.callbackquery.CallbackQuery(  # pylint:disable=E0602
+                data=re.compile(rb"helpme_prev\((.+?)\)")
+            )
+        )
+        async def on_plug_in_callback_query_handler(event):
+            if event.query.user_id == uid:  # pylint:disable=E0602
+                current_page_number = int(
+                    event.data_match.group(1).decode("UTF-8"))
+                buttons = paginate_help(
+                    current_page_number - 1, dugmeler, "helpme"  # pylint:disable=E0602
+                )
+                # https://t.me/TelethonChat/115200
+                await event.edit(buttons=buttons)
+            else:
+                reply_pop_up_alert = f"Kamu Tidak diizinkan Cok, ini Userbot Milik {ALIVE_NAME}"
+                await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
+
+        @tgbot.on(
+            events.callbackquery.CallbackQuery(  # pylint:disable=E0602
+                data=re.compile(b"ub_modul_(.*)")
+            )
+        )
+        async def on_plug_in_callback_query_handler(event):
+            if event.query.user_id == uid:  # pylint:disable=E0602
+                modul_name = event.data_match.group(1).decode("UTF-8")
+
+                cmdhel = str(CMD_HELP[modul_name])
+                if len(cmdhel) > 150:
+                    help_string = (
+                        str(CMD_HELP[modul_name]).replace('`', '')[:150] + "..."
+                        + "\n\nBaca Teks Berikutnya Ketik .help Cok "
+                        + modul_name
+                        + " "
+                    )
+                else:
+                    help_string = str(CMD_HELP[modul_name]).replace('`', '')
+
+                reply_pop_up_alert = (
+                    help_string
+                    if help_string is not None
+                    else "{} Tidak ada dokumen yang telah ditulis untuk modul.".format(
+                        modul_name
+                    )
+                )
+            else:
+                reply_pop_up_alert = f"Kamu Tidak diizinkan Cok, ini Userbot Milik {ALIVE_NAME}"
+
+            await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
+
+    except BaseException:
+        LOGS.info(
+            "Help Mode Inline Bot Mu Tidak aktif Cok. Tidak di aktifkan juga tidak apa-apa Cok. "
+            "Untuk Mengaktifkannya Buat bot di @BotFather Lalu Tambahkan var BOT_TOKEN dan BOT_USERNAME. "
+            "Pergi Ke @BotFather lalu settings bot » Pilih mode inline » Turn On. ")
+    try:
+        bot.loop.run_until_complete(check_botlog_chatid())
+    except BaseException:
+        LOGS.info(
+            "var BOTLOG_CHATID kamu belum di isi. "
+            "Buatlah grup telegram dan masukan bot @MissRose_bot lalu ketik /id "
+            "Masukan id grup nya di var BOTLOG_CHATID")
+        quit(1) 
